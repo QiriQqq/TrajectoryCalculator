@@ -1,0 +1,6 @@
+m_satellite_kg=500
+M_central_body_factor=5
+V0_m_per_s=130
+T_days=500000
+k_coeff=0,05
+F_coeff=0
