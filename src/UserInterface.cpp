@@ -163,7 +163,7 @@ void UserInterface::loadLeftPanelWidgets() {
     const float gapBetweenLabelAndEditBox = WIDGET_SPACING / 2.f; 
 
     auto addInputRowToGrid =
-        [&](const sf::String& labelText, tgui::EditBox::Ptr& editBoxMember) {
+        [&](const sf::String& labelText, tgui::EditBox::Ptr& editBoxMember, const sf::String& toolTipText) {
         // Используем вашу вспомогательную функцию
         auto pair = createInputRowControls(labelText, INPUT_FIELD_WIDTH, INPUT_ROW_HEIGHT);
 
@@ -175,6 +175,15 @@ void UserInterface::loadLeftPanelWidgets() {
         if (pair.first) {
             pair.first->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
             pair.first->setSize({ fixedLabelWidth, INPUT_ROW_HEIGHT });
+
+            if (!toolTipText.isEmpty()) {
+                tgui::String tguiToolTipText(toolTipText); 
+                auto toolTip = tgui::Label::create(tguiToolTipText); 
+                toolTip->getRenderer()->setBackgroundColor(tgui::Color::Yellow);
+                toolTip->getRenderer()->setTextColor(tgui::Color::Black);
+                toolTip->getRenderer()->setPadding({2, 1});
+                pair.first->setToolTip(toolTip);
+            }
         }
 
         if (pair.second) {
@@ -190,20 +199,17 @@ void UserInterface::loadLeftPanelWidgets() {
         m_inputControlsGrid->addWidget(pair.first, currentRow, 0);
         m_inputControlsGrid->addWidget(editBoxMember, currentRow, 1);
 
-        // Padding: {Left, Top, Right, Bottom}
-        // Для метки (колонка 0): отступ справа 5 для зазора.
         m_inputControlsGrid->setWidgetPadding(currentRow, 0, { 0, 2, gapBetweenLabelAndEditBox, 2 });
-        // Для EditBox (колонка 1): левый отступ 0 (зазор уже есть), правый 0.
-        m_inputControlsGrid->setWidgetPadding(currentRow, 1, { 0, 2, 0, 2 });
+        m_inputControlsGrid->setWidgetPadding(currentRow, 1, { 0, 2, 0, 0 });
         currentRow++;
         };
 
-    addInputRowToGrid(L"m (масса спутника, кг):", m_edit_m);
-    addInputRowToGrid(L"M (множ. массы центр. тела):", m_edit_M);
-    addInputRowToGrid(L"V0 (м/с):", m_edit_V0);
-    addInputRowToGrid(L"T (сут):", m_edit_T);
-    addInputRowToGrid(L"k (сопротив.):", m_edit_k);
-    addInputRowToGrid(L"F (тяга):", m_edit_F);
+    addInputRowToGrid(L"m (кг):", m_edit_m, L"Масса вращающегося тела (спутника) в килограммах");
+    addInputRowToGrid(L"M (x1e25 кг):", m_edit_M, L"Множитель для массы центрального тела. Итоговая масса = M * 1.0e25 кг");
+    addInputRowToGrid(L"V0 (м/с):", m_edit_V0, L"Начальная скорость спутника в м/с (направлена по оси Y)");
+    addInputRowToGrid(L"T (сут):", m_edit_T, L"Общее время симуляции в сутках");
+    addInputRowToGrid(L"k (сопротив.):", m_edit_k, L"Безразмерный коэффициент сопротивления среды");
+    addInputRowToGrid(L"F (тяга):", m_edit_F, L"Безразмерный коэффициент силы тяги");
 
     // Устанавливаем финальную высоту грида
     if (currentRow > 0) {
