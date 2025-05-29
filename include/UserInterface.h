@@ -9,6 +9,7 @@
 #include <TGUI/Widgets/TextArea.hpp>
 #include <TGUI/Widgets/MenuBar.hpp>     // Для MenuBar
 #include <TGUI/Widgets/FileDialog.hpp>  // Для FileDialog
+#include <TGUI/Widgets/ChildWindow.hpp> // Для ChildWindow
 
 #include <vector>
 #include <string>
@@ -59,7 +60,9 @@ private:
     // Методы-обработчики для новых пунктов меню
     void onSaveParamsAsMenuItemClicked();
     void onSaveTrajectoryDataAsMenuItemClicked();
-    void onOpenDataFolderMenuItemClicked(); // <--- НОВЫЙ МЕТОД
+    void onOpenDataFolderMenuItemClicked();
+    void onShowHelpMenuItemClicked();       // <--- НОВЫЙ МЕТОД
+    void onShowAboutMenuItemClicked();      // <--- (Заготовка для "О программе")
     void loadMenuBar();
 
     void loadWidgets();

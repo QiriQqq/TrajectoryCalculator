@@ -79,31 +79,45 @@ void UserInterface::loadMenuBar() {
     m_menuBar->addMenu(L"Файл");
     m_menuBar->addMenuItem(L"Файл", L"Сохранить параметры как...");
     m_menuBar->addMenuItem(L"Файл", L"Сохранить данные траектории как...");
-    m_menuBar->addMenuItem(L"Файл", L"Открыть папку с данными"); // <--- НОВЫЙ ПУНКТ МЕНЮ
-    // Можно добавить разделитель, если есть другие пункты
-    // m_menuBar->addMenuItem(L"Файл", L""); 
+    m_menuBar->addMenuItem(L"Файл", L"Открыть папку с данными");
     m_menuBar->addMenuItem(L"Файл", L"Выход"); // Если Выход тоже будет здесь
 
+    // --- Меню "Справка" ---
+    m_menuBar->addMenu(L"Справка");
+    m_menuBar->addMenuItem(L"Справка", L"Руководство пользователя");
+    m_menuBar->addMenuItem(L"Справка", L"О программе"); // Добавим сразу
+
     // Подключаем сигналы для пунктов меню "Файл"
-    m_menuBar->onMenuItemClick.connect([this](const std::vector<tgui::String>& menuItem) {
-        if (menuItem.size() == 2 && menuItem[0] == L"Файл") {
-            if (menuItem[1] == L"Сохранить параметры как...") {
+    m_menuBar->onMenuItemClick.connect([this](const std::vector<tgui::String>& menuItemHierarchy) {
+        if (menuItemHierarchy.empty()) return;
+
+        const tgui::String& menuName = menuItemHierarchy[0];
+        tgui::String itemName = (menuItemHierarchy.size() > 1) ? menuItemHierarchy[1] : "";
+
+        if (menuName == L"Файл") {
+            if (itemName == L"Сохранить параметры как...") {
                 onSaveParamsAsMenuItemClicked();
-            } 
-            else if (menuItem[1] == L"Сохранить данные траектории как...") {
+            }
+            else if (itemName == L"Сохранить данные траектории как...") {
                 onSaveTrajectoryDataAsMenuItemClicked();
-            } 
-            else if (menuItem[1] == L"Открыть папку с данными") { // <--- ОБРАБОТЧИК НОВОГО ПУНКТА
+            }
+            else if (itemName == L"Открыть папку с данными") {
                 onOpenDataFolderMenuItemClicked();
             }
-            else if (menuItem[1] == L"Выход") {
+            else if (itemName == L"Выход") {
                 m_window.close();
             }
         }
+        else if (menuName == L"Справка") {
+            if (itemName == L"Руководство пользователя") {
+                onShowHelpMenuItemClicked();
+            }
+            else if (itemName == L"О программе") {
+                onShowAboutMenuItemClicked(); // Вызовем метод, который пока не реализован
+            }
+        }
+
     });
-
-    // TODO: Добавить меню "Справка" позже
-
     m_gui.add(m_menuBar); // Добавляем MenuBar напрямую в Gui
 }
 
@@ -192,39 +206,15 @@ void UserInterface::loadLeftPanelWidgets() {
     if (!m_errorMessagesLabel) { std::cerr << "Error: Failed to create m_errorMessagesLabel" << std::endl; return; }
 
     m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red); // Красный для ошибок
+    m_errorMessagesLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
     m_errorMessagesLabel->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left); // или Center
     m_errorMessagesLabel->setVerticalAlignment(tgui::Label::VerticalAlignment::Top);
-    m_errorMessagesLabel->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 90 });
-    m_errorMessagesLabel->setText(""); // Начальное пустое сообщение
+    m_errorMessagesLabel->setTextSize(14);
     m_errorMessagesLabel->setPosition({ PANEL_PADDING, tgui::bindBottom(m_loadTestDataButton) + WIDGET_SPACING });
+    // Высота: от его верха до низа панели минус отступ
+    m_errorMessagesLabel->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING),
+                                   "100% - top - " + tgui::String::fromNumber(PANEL_PADDING) });
     m_leftPanel->add(m_errorMessagesLabel);
-
-    // 7. TextArea для README
-    m_readmeTextBox = tgui::TextArea::create();
-    if (!m_readmeTextBox) {
-        std::cerr << "Error: Failed to create m_readmeTextBox (TextArea)" << std::endl;
-        return;
-    }
-
-    m_readmeTextBox->setReadOnly(true);
-    m_readmeTextBox->getRenderer()->setBackgroundColor(tgui::Color(240, 240, 240));
-    m_readmeTextBox->getRenderer()->setTextColor(tgui::Color::Black);
-    m_readmeTextBox->getRenderer()->setBorders({ 1, 1, 1, 1 });
-    m_readmeTextBox->getRenderer()->setBorderColor(tgui::Color(180, 180, 180));
-    m_readmeTextBox->setTextSize(14);
-
-    m_readmeTextBox->setVerticalScrollbarPolicy(tgui::Scrollbar::Policy::Automatic);
-    m_readmeTextBox->setHorizontalScrollbarPolicy(tgui::Scrollbar::Policy::Never); // Включаем перенос слов
-
-    tgui::Layout readmeTopPositionInPanelLayout = tgui::bindBottom(m_errorMessagesLabel) + WIDGET_SPACING;
-    m_readmeTextBox->setPosition({ PANEL_PADDING, readmeTopPositionInPanelLayout });
-
-    tgui::Layout readmeHeightLayout = { "parent.height - top - " + tgui::String::fromNumber(PANEL_PADDING) };
-    m_readmeTextBox->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), readmeHeightLayout });
-
-    m_leftPanel->add(m_readmeTextBox);
-    m_readmeNeedsInitialization = true;
-
 }
 
 void UserInterface::loadRightPanelWidgets() {
@@ -799,6 +789,99 @@ void UserInterface::onOpenDataFolderMenuItemClicked() {
 #endif
 }
 
+void UserInterface::onShowHelpMenuItemClicked() {
+
+    auto helpWindow = tgui::ChildWindow::create();
+    if (!helpWindow) {
+        std::cerr << "Error: Failed to create Help ChildWindow" << std::endl;
+        return;
+    }
+    helpWindow->setTitle(L"Руководство пользователя");
+    helpWindow->setSize({ "60%", "70%" }); // Размер относительно родителя (Gui)
+    helpWindow->setPosition("(&.size - size) / 2"); // Центрируем окно
+    helpWindow->setResizable(true);
+    // helpWindow->setKeepInParent(true); // Чтобы не выходило за пределы основного окна
+
+    auto readmeArea = tgui::TextArea::create();
+    if (!readmeArea) {
+        helpWindow->destroy();
+        return;
+    }
+    readmeArea->setReadOnly(true);
+    readmeArea->setSize({ "100%", "100%" }); // Заполнить все дочернее окно
+    readmeArea->getRenderer()->setBackgroundColor(tgui::Color(245, 245, 245));
+    readmeArea->getRenderer()->setTextColor(tgui::Color::Black);
+    readmeArea->setTextSize(14);
+    readmeArea->setVerticalScrollbarPolicy(tgui::Scrollbar::Policy::Automatic);
+    readmeArea->setHorizontalScrollbarPolicy(tgui::Scrollbar::Policy::Never);
+
+    std::ifstream readmeFile(README_FILENAME);
+    if (readmeFile.is_open()) {
+        std::string content((std::istreambuf_iterator<char>(readmeFile)), std::istreambuf_iterator<char>());
+        readmeFile.close();
+        readmeArea->setText(tgui::String(content.c_str()));
+        readmeArea->setVerticalScrollbarValue(0); // Сразу в начало
+    }
+    else {
+        readmeArea->setText(L"Файл README.txt не найден.");
+    }
+
+    helpWindow->add(readmeArea);
+
+    m_gui.add(helpWindow); // Добавляем дочернее окно в Gui
+    helpWindow->setFocused(true); // Делаем его активным
+}
+
+void UserInterface::onShowAboutMenuItemClicked() {
+    std::cout << "Menu: Show About clicked" << std::endl;
+
+    auto aboutWindow = tgui::ChildWindow::create();
+    if (!aboutWindow) return;
+
+    aboutWindow->setTitle(L"О программе");
+    aboutWindow->setSize({ 400, 250 }); // Фиксированный размер для окна "О программе"
+    aboutWindow->setPosition("(&.size - size) / 2");
+    aboutWindow->setResizable(false);
+
+    auto layout = tgui::VerticalLayout::create();
+    layout->setSize({ "100%", "100%" });
+    layout->getRenderer()->setPadding({ 10, 10, 10, 10 }); // Отступы внутри VerticalLayout
+
+    auto titleLabel = tgui::Label::create(L"Расчет Траектории Тела");
+    titleLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
+    titleLabel->setTextSize(18);
+    titleLabel->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Center);
+    layout->add(titleLabel);
+    layout->addSpace(10); // Небольшой отступ
+
+    auto versionLabel = tgui::Label::create(L"Версия: 1.0.0"); // Замените на вашу версию
+    layout->add(versionLabel);
+
+    auto authorLabel = tgui::Label::create(L"Автор: (Ваше Имя/Никнейм)");
+    layout->add(authorLabel);
+    layout->addSpace(10);
+
+    auto descriptionText = tgui::Label::create(
+        L"Программа для моделирования и визуализации\n"
+        L"орбитального движения.\n\n"
+        L"Используемые библиотеки:\n"
+        L"- SFML (www.sfml-dev.org)\n"
+        L"- TGUI (tgui.eu)"
+    );
+    descriptionText->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
+    layout->add(descriptionText);
+    layout->addSpace(15);
+
+    auto closeButton = tgui::Button::create(L"Закрыть");
+    closeButton->setSize({ "30%", 30 });
+    closeButton->onClick.connect([aboutWindow] { aboutWindow->close(); }); // Закрыть окно по кнопке
+    layout->add(closeButton);
+    layout->setRatio(4, 1); // Дать кнопке меньше места
+
+    aboutWindow->add(layout);
+    m_gui.add(aboutWindow);
+    aboutWindow->setFocused(true);
+}
 
 void UserInterface::prepareTrajectoryForDisplay() {
     m_trajectoryDisplayPoints.clear();
@@ -1230,8 +1313,6 @@ void UserInterface::handleEvents() {
             if (m_trajectoryAvailable || !m_currentTableData.empty() || m_tableDataGrid->getWidgets().size() > 0) {
                 populateTable(m_currentTableData);
             }
-
-            m_readmeTextBox->setVerticalScrollbarValue(0);
         }
 
         
@@ -1239,20 +1320,7 @@ void UserInterface::handleEvents() {
 }
 
 void UserInterface::update() {
-    if (m_readmeNeedsInitialization && m_readmeTextBox) {
-        std::ifstream readmeFile(README_FILENAME);
-        if (readmeFile.is_open()) {
-            std::string content((std::istreambuf_iterator<char>(readmeFile)), std::istreambuf_iterator<char>());
-            readmeFile.close();
-            m_readmeTextBox->setText(tgui::String(content.c_str()));
-            m_readmeTextBox->setVerticalScrollbarValue(0);
-        }
-        else {
-            std::cerr << "Warning: Could not open README file (in update): " << README_FILENAME << std::endl;
-            m_readmeTextBox->setText(L"Файл README.txt не найден.");
-        }
-        m_readmeNeedsInitialization = false; // Сбрасываем флаг
-    }
+    // Убрана логика работы с ReadME
 }
 
 void UserInterface::render() {
