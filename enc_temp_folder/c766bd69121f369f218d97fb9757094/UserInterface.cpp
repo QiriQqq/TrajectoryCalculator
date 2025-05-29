@@ -906,6 +906,57 @@ void UserInterface::onShowAboutMenuItemClicked() {
     aboutWindow->setFocused(true);
 }
 
+//void UserInterface::onShowAboutMenuItemClicked() {
+//    std::cout << "Menu: Show About clicked" << std::endl;
+//
+//    auto aboutWindow = tgui::ChildWindow::create();
+//    if (!aboutWindow) return;
+//
+//    aboutWindow->setTitle(L"О программе");
+//    aboutWindow->setSize({ 400, 250 }); // Фиксированный размер для окна "О программе"
+//    aboutWindow->setPosition("(&.size - size) / 2");
+//    aboutWindow->setResizable(false);
+//
+//    auto layout = tgui::VerticalLayout::create();
+//    layout->setSize({ "100%", "100%" });
+//    layout->getRenderer()->setPadding({ 10, 10, 10, 10 }); // Отступы внутри VerticalLayout
+//
+//    auto titleLabel = tgui::Label::create(L"Расчет Траектории Тела");
+//    titleLabel->getRenderer()->setTextStyle(tgui::TextStyle::Bold);
+//    titleLabel->setTextSize(18);
+//    titleLabel->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Center);
+//    layout->add(titleLabel);
+//    layout->addSpace(10); // Небольшой отступ
+//
+//    auto versionLabel = tgui::Label::create(L"Версия: 1.0.0"); // Замените на вашу версию
+//    layout->add(versionLabel);
+//
+//    auto authorLabel = tgui::Label::create(L"Автор: (Ваше Имя/Никнейм)");
+//    layout->add(authorLabel);
+//    layout->addSpace(10);
+//
+//    auto descriptionText = tgui::Label::create(
+//        L"Программа для моделирования и визуализации\n"
+//        L"орбитального движения.\n\n"
+//        L"Используемые библиотеки:\n"
+//        L"- SFML (www.sfml-dev.org)\n"
+//        L"- TGUI (tgui.eu)"
+//    );
+//    descriptionText->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
+//    layout->add(descriptionText);
+//    layout->addSpace(15);
+//
+//    auto closeButton = tgui::Button::create(L"Закрыть");
+//    closeButton->setSize({ "30%", 30 });
+//    closeButton->onClick.connect([aboutWindow] { aboutWindow->close(); }); // Закрыть окно по кнопке
+//    layout->add(closeButton);
+//    layout->setRatio(4, 1); // Дать кнопке меньше места
+//
+//    aboutWindow->add(layout);
+//    m_gui.add(aboutWindow);
+//    aboutWindow->setFocused(true);
+//}
+
 void UserInterface::prepareTrajectoryForDisplay() {
     m_trajectoryDisplayPoints.clear();
     if (!m_trajectoryAvailable || m_calculatedStates.empty()) {

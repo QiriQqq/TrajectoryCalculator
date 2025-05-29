@@ -10,6 +10,7 @@
 #include <TGUI/Widgets/MenuBar.hpp>     // Для MenuBar
 #include <TGUI/Widgets/FileDialog.hpp>  // Для FileDialog
 #include <TGUI/Widgets/ChildWindow.hpp> // Для ChildWindow
+#include <TGUI/Widgets/VerticalLayout.hpp>
 
 #include <vector>
 #include <string>
