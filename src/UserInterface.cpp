@@ -27,10 +27,13 @@
 
 // --- Вспомогательная функция для создания строки ввода ---
 static std::pair<tgui::Label::Ptr, tgui::EditBox::Ptr> createInputRowControls(const sf::String& labelText, float editBoxWidth, float rowHeight) {
+    tgui::String tguiLabelText(labelText);
+    
     auto label = tgui::Label::create(tgui::String(labelText));
     if (label) {
         label->getRenderer()->setTextColor(tgui::Color::Black);
         label->setVerticalAlignment(tgui::Label::VerticalAlignment::Center);
+        label->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
     }
 
     auto editBox = tgui::EditBox::create();
@@ -80,12 +83,12 @@ void UserInterface::loadMenuBar() {
     m_menuBar->addMenuItem(L"Файл", L"Сохранить параметры как...");
     m_menuBar->addMenuItem(L"Файл", L"Сохранить данные траектории как...");
     m_menuBar->addMenuItem(L"Файл", L"Открыть папку с данными");
-    m_menuBar->addMenuItem(L"Файл", L"Выход"); // Если Выход тоже будет здесь
+    m_menuBar->addMenuItem(L"Файл", L"Выход");
 
     // --- Меню "Справка" ---
     m_menuBar->addMenu(L"Справка");
     m_menuBar->addMenuItem(L"Справка", L"Руководство пользователя");
-    m_menuBar->addMenuItem(L"Справка", L"О программе"); // Добавим сразу
+    m_menuBar->addMenuItem(L"Справка", L"О программе"); 
 
     // Подключаем сигналы для пунктов меню "Файл"
     m_menuBar->onMenuItemClick.connect([this](const std::vector<tgui::String>& menuItemHierarchy) {
@@ -150,52 +153,89 @@ void UserInterface::loadLeftPanelWidgets() {
     // 2. Grid для полей ввода
     m_inputControlsGrid = tgui::Grid::create();
     if (!m_inputControlsGrid) { std::cerr << "Error: Failed to create m_inputControlsGrid" << std::endl; return; }
+    // Задаем ширину грида. Высота будет установлена после заполнения.
+    m_inputControlsGrid->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 0 });
     m_inputControlsGrid->setPosition({ PANEL_PADDING, tgui::bindBottom(m_inputTitleLabel) + WIDGET_SPACING });
-    m_leftPanel->add(m_inputControlsGrid);
+    // НЕ добавляем грид на m_leftPanel здесь
 
     unsigned int currentRow = 0;
-    // Лямбда для добавления строки в inputControlsGrid
-    auto addInputRowToGrid = [&](const sf::String& text, tgui::EditBox::Ptr& editBoxMember) {
-        auto pair = createInputRowControls(text, INPUT_FIELD_WIDTH, INPUT_ROW_HEIGHT);
+    const float fixedLabelWidth = 190.f;
+    const float gapBetweenLabelAndEditBox = WIDGET_SPACING / 2.f; 
+
+    auto addInputRowToGrid =
+        [&](const sf::String& labelText, tgui::EditBox::Ptr& editBoxMember) {
+        // Используем вашу вспомогательную функцию
+        auto pair = createInputRowControls(labelText, INPUT_FIELD_WIDTH, INPUT_ROW_HEIGHT);
+
         if (!pair.first || !pair.second) {
-            std::cerr << "Error: Failed to create input pair for: " << text.toAnsiString() << std::endl;
+            std::cerr << "Error: Failed to create input pair for: " << labelText.toAnsiString() << std::endl;
             return;
         }
+
+        if (pair.first) {
+            pair.first->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
+            pair.first->setSize({ fixedLabelWidth, INPUT_ROW_HEIGHT });
+        }
+
+        if (pair.second) {
+            tgui::Layout editBoxWidthLayout =
+            { "parent.width - "
+             + tgui::String::fromNumber(fixedLabelWidth)
+             + " - " + tgui::String::fromNumber(gapBetweenLabelAndEditBox)
+            };
+            pair.second->setSize({ "40%", INPUT_ROW_HEIGHT }); // 40% ширины СВОЕЙ КОЛОНКИ
+        }
+
         editBoxMember = pair.second;
         m_inputControlsGrid->addWidget(pair.first, currentRow, 0);
         m_inputControlsGrid->addWidget(editBoxMember, currentRow, 1);
-        m_inputControlsGrid->setWidgetPadding(currentRow, 0, { 5, 5, 5, 0 });  // Label: T,R,B,L (0 слева, т.к. грид имеет свой отступ)
-        m_inputControlsGrid->setWidgetPadding(currentRow, 1, { 5, 0, 5, 5 });  // EditBox: T,R,B,L (0 справа)
+
+        // Padding: {Left, Top, Right, Bottom}
+        // Для метки (колонка 0): отступ справа 5 для зазора.
+        m_inputControlsGrid->setWidgetPadding(currentRow, 0, { 0, 2, gapBetweenLabelAndEditBox, 2 });
+        // Для EditBox (колонка 1): левый отступ 0 (зазор уже есть), правый 0.
+        m_inputControlsGrid->setWidgetPadding(currentRow, 1, { 0, 2, 0, 2 });
         currentRow++;
-    };
+        };
 
     addInputRowToGrid(L"m (масса спутника, кг):", m_edit_m);
     addInputRowToGrid(L"M (множ. массы центр. тела):", m_edit_M);
-    addInputRowToGrid(L"V0 (начальная скорость, м/с):", m_edit_V0);
-    addInputRowToGrid(L"T (время симуляции, сут):", m_edit_T);
-    addInputRowToGrid(L"k (коэфф. сопрот. среды):", m_edit_k);
-    addInputRowToGrid(L"F (коэфф. силы тяги):", m_edit_F);
+    addInputRowToGrid(L"V0 (м/с):", m_edit_V0);
+    addInputRowToGrid(L"T (сут):", m_edit_T);
+    addInputRowToGrid(L"k (сопротив.):", m_edit_k);
+    addInputRowToGrid(L"F (тяга):", m_edit_F);
+
+    // Устанавливаем финальную высоту грида
+    if (currentRow > 0) {
+        float calculatedGridHeight = currentRow * (INPUT_ROW_HEIGHT + 2 + 2); // Учитываем вертикальные паддинги ячеек (top=2, bottom=2)
+        // Если межстрочного интервала у грида нет.
+        m_inputControlsGrid->setSize({ m_inputControlsGrid->getSizeLayout().x, calculatedGridHeight });
+    }
+    else {
+        m_inputControlsGrid->setSize({ m_inputControlsGrid->getSizeLayout().x, 0 });
+    }
+
+    m_leftPanel->add(m_inputControlsGrid); // <<<--- ДОБАВЛЯЕМ ГРИД НА ПАНЕЛЬ ЗДЕСЬ
 
     // 3. Кнопка "Рассчитать траекторию!"
     m_calculateButton = tgui::Button::create(L"Рассчитать траекторию!");
-    if (!m_calculateButton) { std::cerr << "Error: Failed to create m_calculateButton" << std::endl; return; }
+    if (!m_calculateButton) { /*...*/ return; }
     m_calculateButton->getRenderer()->setRoundedBorderRadius(15);
     m_calculateButton->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 40 });
-    m_calculateButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_inputControlsGrid) + WIDGET_SPACING * 1.5f }); // Больший отступ для кнопки
+    m_calculateButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_inputControlsGrid) + WIDGET_SPACING * 1.5f });
     m_leftPanel->add(m_calculateButton);
 
     // 4. Кнопка "Открыть визуализатор"
-    m_showVisualizerButton = tgui::Button::create(L"Открыть 2D визуализатор"); // Текст можно изменить
-    if (!m_showVisualizerButton) { std::cerr << "Error: Failed to create m_showVisualizerButton" << std::endl; return; }
+    m_showVisualizerButton = tgui::Button::create(L"Открыть 2D визуализатор");
+    if (!m_showVisualizerButton) { /*...*/ return; }
     m_showVisualizerButton->getRenderer()->setRoundedBorderRadius(15);
     m_showVisualizerButton->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 40 });
-    // Позиционируем относительно предыдущей кнопки
     m_showVisualizerButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_calculateButton) + WIDGET_SPACING / 1.5f });
     m_leftPanel->add(m_showVisualizerButton);
 
     // 5. Кнопка "Загрузить тестовые данные"
     m_loadTestDataButton = tgui::Button::create(L"Загрузить тестовые данные");
-    if (!m_loadTestDataButton) { std::cerr << "Error: Failed to create m_loadTestDataButton" << std::endl; return; }
+    if (!m_loadTestDataButton) { /*...*/ return; }
     m_loadTestDataButton->getRenderer()->setRoundedBorderRadius(15);
     m_loadTestDataButton->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 40 });
     m_loadTestDataButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_showVisualizerButton) + WIDGET_SPACING / 1.5f });
@@ -864,7 +904,7 @@ void UserInterface::onShowAboutMenuItemClicked() {
     layout->addSpace(0.2f);
 
     // 2. Версия
-    auto versionLabel = tgui::Label::create(L"Версия: 2.37 (от 29.05.2025)");
+    auto versionLabel = tgui::Label::create(L"Версия: 2.37 (от 28.05.2025)");
     versionLabel->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Center); // Центрирует текст ВНУТРИ Label
     layout->add(versionLabel);
     layout->addSpace(0.4f);

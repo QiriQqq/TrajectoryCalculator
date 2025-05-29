@@ -45,7 +45,7 @@ private:
     static constexpr float PANEL_PADDING = 10.f;
     static constexpr float WIDGET_SPACING = 10.f;
     static constexpr float HEADER_HEIGHT = 30.f;
-    static constexpr float TITLE_HEIGHT = 30.f;
+    static constexpr float TITLE_HEIGHT = 20.f;
     static constexpr float SCROLLBAR_WIDTH_ESTIMATE = 16.f;
     
     double m_lastCalculationDT = 0.001;
@@ -95,7 +95,7 @@ private:
     sf::RenderWindow m_window;
     tgui::Gui m_gui;
     
-    tgui::MenuBar::Ptr m_menuBar;           // <--- ÍÎÂÛÉ ÌÅÍÞ ÁÀÐ
+    tgui::MenuBar::Ptr m_menuBar; 
 
     tgui::Label::Ptr m_inputTitleLabel;
     tgui::EditBox::Ptr m_edit_m;
