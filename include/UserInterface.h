@@ -47,7 +47,8 @@ private:
     static constexpr float HEADER_HEIGHT = 30.f;
     static constexpr float TITLE_HEIGHT = 20.f;
     static constexpr float SCROLLBAR_WIDTH_ESTIMATE = 16.f;
-    
+    const unsigned int BUTTON_TEXT_SIZE = 16;
+
     double m_lastCalculationDT = 0.001;
 
     const std::string PARAMS_FILENAME = "data/simulation_params.txt";

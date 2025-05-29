@@ -154,55 +154,50 @@ void UserInterface::loadLeftPanelWidgets() {
     m_inputControlsGrid = tgui::Grid::create();
     if (!m_inputControlsGrid) { std::cerr << "Error: Failed to create m_inputControlsGrid" << std::endl; return; }
     // Задаем ширину грида. Высота будет установлена после заполнения.
-    m_inputControlsGrid->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 0 });
+    m_inputControlsGrid->setSize({ "60% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 0 });
     m_inputControlsGrid->setPosition({ PANEL_PADDING, tgui::bindBottom(m_inputTitleLabel) + WIDGET_SPACING });
-    // НЕ добавляем грид на m_leftPanel здесь
 
     unsigned int currentRow = 0;
-    const float fixedLabelWidth = 190.f;
-    const float gapBetweenLabelAndEditBox = WIDGET_SPACING / 2.f; 
+    const float fixedLabelWidth = 120.f;
+    const float gapBetweenWidgets = WIDGET_SPACING / 2.f;
 
     auto addInputRowToGrid =
-        [&](const sf::String& labelText, tgui::EditBox::Ptr& editBoxMember, const sf::String& toolTipText) {
-        // Используем вашу вспомогательную функцию
-        auto pair = createInputRowControls(labelText, INPUT_FIELD_WIDTH, INPUT_ROW_HEIGHT);
+        [&](const sf::String& sfLabelText, tgui::EditBox::Ptr& editBoxMember, const sf::String& sfToolTipText) {
 
-        if (!pair.first || !pair.second) {
-            std::cerr << "Error: Failed to create input pair for: " << labelText.toAnsiString() << std::endl;
-            return;
+        tgui::String tguiLabelText(sfLabelText);
+        auto label = tgui::Label::create(tguiLabelText);
+        if (!label) { /* ошибка */ return; }
+        label->getRenderer()->setTextColor(tgui::Color::Black);
+        label->setVerticalAlignment(tgui::Label::VerticalAlignment::Center);
+        label->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
+        label->setTextSize(16);
+        label->setSize({ fixedLabelWidth, INPUT_ROW_HEIGHT });
+
+        if (!sfToolTipText.isEmpty()) {
+            tgui::String tguiToolTipText(sfToolTipText);
+            auto toolTip = tgui::Label::create(tguiToolTipText);
+            toolTip->getRenderer()->setBorders({ 1, 1, 1, 1 });
+            toolTip->getRenderer()->setBackgroundColor(tgui::Color(0, 0, 0, 180));
+            toolTip->getRenderer()->setTextColor(tgui::Color::White);
+            toolTip->getRenderer()->setPadding({3, 2});
+            toolTip->setTextSize(16);
+            label->setToolTip(toolTip);
         }
 
-        if (pair.first) {
-            pair.first->setHorizontalAlignment(tgui::Label::HorizontalAlignment::Left);
-            pair.first->setSize({ fixedLabelWidth, INPUT_ROW_HEIGHT });
+        auto editBox = tgui::EditBox::create();
+        if (!editBox) { /* ошибка */ return; }
+        editBox->setSize({ "100%", INPUT_ROW_HEIGHT });
 
-            if (!toolTipText.isEmpty()) {
-                tgui::String tguiToolTipText(toolTipText); 
-                auto toolTip = tgui::Label::create(tguiToolTipText); 
-                toolTip->getRenderer()->setBackgroundColor(tgui::Color::Yellow);
-                toolTip->getRenderer()->setTextColor(tgui::Color::Black);
-                toolTip->getRenderer()->setPadding({2, 1});
-                pair.first->setToolTip(toolTip);
-            }
-        }
+        editBoxMember = editBox;
 
-        if (pair.second) {
-            tgui::Layout editBoxWidthLayout =
-            { "parent.width - "
-             + tgui::String::fromNumber(fixedLabelWidth)
-             + " - " + tgui::String::fromNumber(gapBetweenLabelAndEditBox)
-            };
-            pair.second->setSize({ "40%", INPUT_ROW_HEIGHT }); // 40% ширины СВОЕЙ КОЛОНКИ
-        }
-
-        editBoxMember = pair.second;
-        m_inputControlsGrid->addWidget(pair.first, currentRow, 0);
+        m_inputControlsGrid->addWidget(label, currentRow, 0);
         m_inputControlsGrid->addWidget(editBoxMember, currentRow, 1);
 
-        m_inputControlsGrid->setWidgetPadding(currentRow, 0, { 0, 2, gapBetweenLabelAndEditBox, 2 });
-        m_inputControlsGrid->setWidgetPadding(currentRow, 1, { 0, 2, 0, 0 });
+        m_inputControlsGrid->setWidgetPadding(currentRow, 0, { 0, 2, gapBetweenWidgets, 2 });
+        m_inputControlsGrid->setWidgetPadding(currentRow, 1, { 0, 2, 0, 2 });
+
         currentRow++;
-        };
+    };
 
     addInputRowToGrid(L"m (кг):", m_edit_m, L"Масса вращающегося тела (спутника) в килограммах");
     addInputRowToGrid(L"M (x1e25 кг):", m_edit_M, L"Множитель для массы центрального тела. Итоговая масса = M * 1.0e25 кг");
@@ -213,8 +208,8 @@ void UserInterface::loadLeftPanelWidgets() {
 
     // Устанавливаем финальную высоту грида
     if (currentRow > 0) {
-        float calculatedGridHeight = currentRow * (INPUT_ROW_HEIGHT + 2 + 2); // Учитываем вертикальные паддинги ячеек (top=2, bottom=2)
-        // Если межстрочного интервала у грида нет.
+        float rowEffectiveHeight = INPUT_ROW_HEIGHT + 2 + 2; // Высота виджета + верхний_паддинг_ячейки + нижний_паддинг_ячейки
+        float calculatedGridHeight = currentRow * rowEffectiveHeight;
         m_inputControlsGrid->setSize({ m_inputControlsGrid->getSizeLayout().x, calculatedGridHeight });
     }
     else {
@@ -226,7 +221,8 @@ void UserInterface::loadLeftPanelWidgets() {
     // 3. Кнопка "Рассчитать траекторию!"
     m_calculateButton = tgui::Button::create(L"Рассчитать траекторию!");
     if (!m_calculateButton) { /*...*/ return; }
-    m_calculateButton->getRenderer()->setRoundedBorderRadius(15);
+    m_calculateButton->getRenderer()->setRoundedBorderRadius(20);
+    m_calculateButton->setTextSize(BUTTON_TEXT_SIZE);
     m_calculateButton->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 40 });
     m_calculateButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_inputControlsGrid) + WIDGET_SPACING * 1.5f });
     m_leftPanel->add(m_calculateButton);
@@ -234,7 +230,8 @@ void UserInterface::loadLeftPanelWidgets() {
     // 4. Кнопка "Открыть визуализатор"
     m_showVisualizerButton = tgui::Button::create(L"Открыть 2D визуализатор");
     if (!m_showVisualizerButton) { /*...*/ return; }
-    m_showVisualizerButton->getRenderer()->setRoundedBorderRadius(15);
+    m_showVisualizerButton->getRenderer()->setRoundedBorderRadius(20);
+    m_showVisualizerButton->setTextSize(BUTTON_TEXT_SIZE);
     m_showVisualizerButton->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 40 });
     m_showVisualizerButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_calculateButton) + WIDGET_SPACING / 1.5f });
     m_leftPanel->add(m_showVisualizerButton);
@@ -242,7 +239,8 @@ void UserInterface::loadLeftPanelWidgets() {
     // 5. Кнопка "Загрузить тестовые данные"
     m_loadTestDataButton = tgui::Button::create(L"Загрузить тестовые данные");
     if (!m_loadTestDataButton) { /*...*/ return; }
-    m_loadTestDataButton->getRenderer()->setRoundedBorderRadius(15);
+    m_loadTestDataButton->getRenderer()->setRoundedBorderRadius(20);
+    m_loadTestDataButton->setTextSize(BUTTON_TEXT_SIZE);
     m_loadTestDataButton->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 40 });
     m_loadTestDataButton->setPosition({ PANEL_PADDING, tgui::bindBottom(m_showVisualizerButton) + WIDGET_SPACING / 1.5f });
     m_leftPanel->add(m_loadTestDataButton);
@@ -857,7 +855,7 @@ void UserInterface::onShowHelpMenuItemClicked() {
     readmeArea->setSize({ "100%", "100%" }); // Заполнить все дочернее окно
     readmeArea->getRenderer()->setBackgroundColor(tgui::Color(245, 245, 245));
     readmeArea->getRenderer()->setTextColor(tgui::Color::Black);
-    readmeArea->setTextSize(14);
+    readmeArea->setTextSize(16);
     readmeArea->setVerticalScrollbarPolicy(tgui::Scrollbar::Policy::Automatic);
     readmeArea->setHorizontalScrollbarPolicy(tgui::Scrollbar::Policy::Never);
 
