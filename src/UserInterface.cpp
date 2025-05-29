@@ -618,9 +618,12 @@ void UserInterface::onCalculateButtonPressed() {
 void UserInterface::onSaveParamsAsMenuItemClicked() {
     if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"");
 
+    const tgui::String expectedFilename = L"мои_параметры.txt";
+
     auto dialog = tgui::FileDialog::create(L"Сохранить параметры как...", L"Сохранить");
     dialog->setFileTypeFilters({ {L"Текстовые файлы (*.txt)", {L"*.txt"}}, {L"Все файлы (*.*)", {L"*.*"}} });
-    
+    dialog->getRenderer()->setTitleBarHeight(30);
+
     tgui::Filesystem::Path defaultSavePath(USER_SAVES_DIR);
     // Проверяем и создаем директорию, если ее нет
     if (!tgui::Filesystem::directoryExists(defaultSavePath)) {
@@ -631,17 +634,29 @@ void UserInterface::onSaveParamsAsMenuItemClicked() {
     if (tgui::Filesystem::directoryExists(defaultSavePath)) {
         dialog->setPath(defaultSavePath);
     }
-    dialog->setFilename(L"мои_параметры.txt"); // Имя файла по умолчанию в диалоге
+    dialog->setFilename(expectedFilename); // Имя файла по умолчанию в диалоге
     dialog->setPosition("(&.size - size) / 2"); // Центрируем окно
 
     // Этот сигнал вызывается, когда пользователь нажимает "Сохранить"
-    dialog->onFileSelect.connect([this](const std::vector<tgui::Filesystem::Path>& paths) {
+    dialog->onFileSelect.connect([this, expectedFilename](const std::vector<tgui::Filesystem::Path>& paths) {
         if (paths.empty()) {
             if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"Сохранение параметров отменено.");
             return;
         }
 
         const tgui::Filesystem::Path& fsPath = paths[0]; // Берем первый (и единственный) путь
+        tgui::String selectedFilename = fsPath.getFilename();
+
+        if (selectedFilename != expectedFilename) {
+            std::cerr << "Error: Incorrect filename selected/entered. Expected: "
+                << expectedFilename.toStdString() << ", Got: " << selectedFilename.toStdString() << std::endl;
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                m_errorMessagesLabel->setText(L"Ошибка: Пожалуйста, сохраняйте файл\nс именем '" + expectedFilename + L"'.");
+            }
+            return;
+        }
+
 
         tgui::String pathForDisplay = fsPath.asString(); // Для отображения в UI (использует '/')
         auto nativePathForStream = fsPath.asString();
@@ -711,9 +726,12 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
         return;
     }
 
+    const tgui::String expectedFilename = L"мои_данные_траектории.txt"; // Ожидаемое имя файла
+
     auto dialog = tgui::FileDialog::create(L"Сохранить данные траектории как...", L"Сохранить");
     dialog->setFileTypeFilters({ {L"Текстовые файлы (*.txt)", {L"*.txt"}}, {L"CSV файлы (*.csv)", {L"*.csv"}}, {L"Все файлы (*.*)", {L"*.*"}} });
-    
+    dialog->getRenderer()->setTitleBarHeight(30);
+
     tgui::Filesystem::Path defaultSavePath(USER_SAVES_DIR);
     if (!tgui::Filesystem::directoryExists(defaultSavePath)) {
         if (!tgui::Filesystem::createDirectory(defaultSavePath)) {
@@ -723,10 +741,10 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
     if (tgui::Filesystem::directoryExists(defaultSavePath)) {
         dialog->setPath(defaultSavePath);
     }
-    dialog->setFilename(L"мои_данные_траектории.txt");
+    dialog->setFilename(expectedFilename);
     dialog->setPosition("(&.size - size) / 2"); // Центрируем окно
 
-    dialog->onFileSelect.connect([this](const std::vector<tgui::Filesystem::Path>& paths) {
+    dialog->onFileSelect.connect([this, expectedFilename](const std::vector<tgui::Filesystem::Path>& paths) {
         if (paths.empty()) {
             std::cout << "Save Trajectory Data: Dialog closed without selection." << std::endl;
             if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"Сохранение данных отменено.");
@@ -734,7 +752,18 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
         }
 
         const tgui::Filesystem::Path& fsPath = paths[0];
-        tgui::String pathForDisplay = fsPath.asString();
+        tgui::String selectedFilename = fsPath.getFilename();
+
+        if (selectedFilename != expectedFilename) {
+            std::cerr << "Error: Incorrect filename for trajectory. Expected: "
+                << expectedFilename.toStdString() << ", Got: " << selectedFilename.toStdString() << std::endl;
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                m_errorMessagesLabel->setText(L"Ошибка: Пожалуйста, сохраняйте файл\nс именем '" + expectedFilename + L"'.");
+            }
+            return;
+        }
+
         auto nativePathForStream = fsPath.asNativeString();
         std::string pathStringToOpen;
 
@@ -744,27 +773,26 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
         std::ofstream outFile(nativePathForStream, std::ios::binary);
 #endif
 
-        // std::ofstream outFile(pathStringToOpen);
         if (!outFile.is_open()) {
             std::cerr << "Error: Could not open/create trajectory file via ofstream." << std::endl;
             if (m_errorMessagesLabel) {
                 m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
-                m_errorMessagesLabel->setText(L"Ошибка: Не удалось создать/открыть файл для траектории\n'" + pathForDisplay + L"'. Проверьте права доступа и путь.");
+                m_errorMessagesLabel->setText(L"Ошибка: Не удалось создать/открыть файл для траектории\n'" + selectedFilename + L"'. Проверьте права доступа и путь.");
             }
             return;
         }
 
-        outFile << std::fixed << std::setprecision(10);
-        outFile << "Step_Index,Time_dimless(approx),x_dimless,y_dimless,vx_dimless,vy_dimless\n";
+        outFile << std::fixed << std::setprecision(5);
+        outFile << "Step_Index, Time_dimless(approx), x_dimless, y_dimless, vx_dimless, vy_dimless\n";
 
         for (size_t i = 0; i < m_calculatedStates.size(); ++i) {
             const auto& state = m_calculatedStates[i];
             double dimensionless_time_approx = static_cast<double>(i) * m_lastCalculationDT;
 
-            outFile << i << ","
-                << dimensionless_time_approx << ","
-                << state.x << "," << state.y << ","
-                << state.vx << "," << state.vy << "\n";
+            outFile << i << ",  "
+                << dimensionless_time_approx << ",  "
+                << state.x << ",  " << state.y << ",  "
+                << state.vx << ",  " << state.vy << "\n";
         }
         outFile.close();
 
@@ -772,7 +800,7 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
             // ... (обработка ошибки записи) ...
             if (m_errorMessagesLabel) {
                 m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
-                m_errorMessagesLabel->setText(L"Ошибка записи данных траектории в\n'" + pathForDisplay + L"'.");
+                m_errorMessagesLabel->setText(L"Ошибка записи данных траектории в\n'" + selectedFilename + L"'.");
             }
         }
         else {
@@ -780,7 +808,7 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
             if (m_errorMessagesLabel) {
                 m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color(0, 128, 0));
                 m_errorMessagesLabel->setText(L"Данные траектории (" + tgui::String::fromNumber(m_calculatedStates.size())
-                    + L" точек)\nсохранены в '" + pathForDisplay + L"'.");
+                    + L" точек)\nсохранены в '" + selectedFilename + L"'.");
             }
         }
     });
@@ -865,7 +893,7 @@ void UserInterface::onShowHelpMenuItemClicked() {
     helpWindow->setSize({ "60%", "70%" }); // Размер относительно родителя (Gui)
     helpWindow->setPosition("(&.size - size) / 2"); // Центрируем окно
     helpWindow->setResizable(true);
-    // helpWindow->setKeepInParent(true); // Чтобы не выходило за пределы основного окна
+    helpWindow->getRenderer()->setTitleBarHeight(30);
 
     auto readmeArea = tgui::TextArea::create();
     if (!readmeArea) {
@@ -910,10 +938,11 @@ void UserInterface::onShowAboutMenuItemClicked() {
 
     aboutWindow->setWidgetName("AboutProgramWindow");
     aboutWindow->setTitle(L"О программе: Расчет Траектории");
-    aboutWindow->setSize({ 500, 560 });
+    aboutWindow->setSize({ 500, 580 });
     aboutWindow->setPosition("(&.size - size) / 2");
     aboutWindow->setResizable(false);
     aboutWindow->setTitleButtons(tgui::ChildWindow::TitleButton::Close);
+    aboutWindow->getRenderer()->setTitleBarHeight(30);
 
     auto layout = tgui::VerticalLayout::create();
     layout->setSize({ "100%", "100%" });
