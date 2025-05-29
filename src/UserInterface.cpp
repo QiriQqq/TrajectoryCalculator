@@ -620,8 +620,19 @@ void UserInterface::onSaveParamsAsMenuItemClicked() {
 
     auto dialog = tgui::FileDialog::create(L"Сохранить параметры как...", L"Сохранить");
     dialog->setFileTypeFilters({ {L"Текстовые файлы (*.txt)", {L"*.txt"}}, {L"Все файлы (*.*)", {L"*.*"}} });
-    dialog->setPath(tgui::Filesystem::Path(PARAMS_FILENAME).getParentPath());
+    
+    tgui::Filesystem::Path defaultSavePath(USER_SAVES_DIR);
+    // Проверяем и создаем директорию, если ее нет
+    if (!tgui::Filesystem::directoryExists(defaultSavePath)) {
+        if (!tgui::Filesystem::createDirectory(defaultSavePath)) {
+            std::cerr << "Warning: Could not create directory for user saves: " << defaultSavePath.asString() << std::endl;
+        }
+    }
+    if (tgui::Filesystem::directoryExists(defaultSavePath)) {
+        dialog->setPath(defaultSavePath);
+    }
     dialog->setFilename(L"мои_параметры.txt"); // Имя файла по умолчанию в диалоге
+    dialog->setPosition("(&.size - size) / 2"); // Центрируем окно
 
     // Этот сигнал вызывается, когда пользователь нажимает "Сохранить"
     dialog->onFileSelect.connect([this](const std::vector<tgui::Filesystem::Path>& paths) {
@@ -702,8 +713,18 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
 
     auto dialog = tgui::FileDialog::create(L"Сохранить данные траектории как...", L"Сохранить");
     dialog->setFileTypeFilters({ {L"Текстовые файлы (*.txt)", {L"*.txt"}}, {L"CSV файлы (*.csv)", {L"*.csv"}}, {L"Все файлы (*.*)", {L"*.*"}} });
-    dialog->setPath(tgui::Filesystem::Path(PARAMS_FILENAME).getParentPath());
+    
+    tgui::Filesystem::Path defaultSavePath(USER_SAVES_DIR);
+    if (!tgui::Filesystem::directoryExists(defaultSavePath)) {
+        if (!tgui::Filesystem::createDirectory(defaultSavePath)) {
+            std::cerr << "Warning: Could not create directory for user saves: " << defaultSavePath.asString() << std::endl;
+        }
+    }
+    if (tgui::Filesystem::directoryExists(defaultSavePath)) {
+        dialog->setPath(defaultSavePath);
+    }
     dialog->setFilename(L"мои_данные_траектории.txt");
+    dialog->setPosition("(&.size - size) / 2"); // Центрируем окно
 
     dialog->onFileSelect.connect([this](const std::vector<tgui::Filesystem::Path>& paths) {
         if (paths.empty()) {
@@ -783,7 +804,7 @@ void UserInterface::onOpenDataFolderMenuItemClicked() {
     try {
         // Получаем путь к директории, где находится исполняемый файл
         std::filesystem::path exePath = getExecutablePath_Windows();
-        std::filesystem::path dataPath = exePath.parent_path() / "data";
+        std::filesystem::path dataPath = exePath.parent_path() / "data" / "user_data";
 
         // Убедимся, что папка существует, или попытаемся ее создать
         if (!std::filesystem::exists(dataPath)) {

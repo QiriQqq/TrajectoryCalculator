@@ -54,6 +54,7 @@ private:
     const std::string PARAMS_FILENAME = "data/simulation_params.txt";
     const std::string README_FILENAME = "data/README.txt";
     const std::string TEST_DATA_FILENAME = "data/test_data.txt";
+    const std::string USER_SAVES_DIR = "data/user_data/"; 
 
     bool m_readmeNeedsInitialization = false;
 
@@ -63,8 +64,8 @@ private:
     void onSaveParamsAsMenuItemClicked();
     void onSaveTrajectoryDataAsMenuItemClicked();
     void onOpenDataFolderMenuItemClicked();
-    void onShowHelpMenuItemClicked();       // <--- НОВЫЙ МЕТОД
-    void onShowAboutMenuItemClicked();      // <--- (Заготовка для "О программе")
+    void onShowHelpMenuItemClicked();       
+    void onShowAboutMenuItemClicked();     
     void loadMenuBar();
 
     void loadWidgets();
