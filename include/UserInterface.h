@@ -7,6 +7,8 @@
 #include <SFML/Graphics.hpp>
 #include <TGUI/TGUI.hpp>
 #include <TGUI/Widgets/TextArea.hpp>
+#include <TGUI/Widgets/MenuBar.hpp>     // Для MenuBar
+#include <TGUI/Widgets/FileDialog.hpp>  // Для FileDialog
 
 #include <vector>
 #include <string>
@@ -44,6 +46,8 @@ private:
     static constexpr float TITLE_HEIGHT = 30.f;
     static constexpr float SCROLLBAR_WIDTH_ESTIMATE = 16.f;
     
+    double m_lastCalculationDT = 0.001;
+
     const std::string PARAMS_FILENAME = "data/simulation_params.txt";
     const std::string README_FILENAME = "data/README.txt";
     const std::string TEST_DATA_FILENAME = "data/test_data.txt";
@@ -52,6 +56,11 @@ private:
 
     void initializeGui();
     
+    // Методы-обработчики для новых пунктов меню
+    void onSaveParamsAsMenuItemClicked();
+    void onSaveTrajectoryDataAsMenuItemClicked();
+    void loadMenuBar();
+
     void loadWidgets();
     void loadLeftPanelWidgets();
     void loadRightPanelWidgets();
@@ -80,6 +89,8 @@ private:
 
     sf::RenderWindow m_window;
     tgui::Gui m_gui;
+    
+    tgui::MenuBar::Ptr m_menuBar;           // <--- НОВЫЙ МЕНЮ БАР
 
     tgui::Label::Ptr m_inputTitleLabel;
     tgui::EditBox::Ptr m_edit_m;

@@ -52,8 +52,49 @@ void UserInterface::initializeGui() {
     populateTable({}); // Начальное пустое состояние таблицы
 }
 
+void UserInterface::loadMenuBar() {
+    m_menuBar = tgui::MenuBar::create();
+    if (!m_menuBar) {
+        std::cerr << "Error: Failed to create MenuBar" << std::endl;
+        return;
+    }
+    m_menuBar->getRenderer()->setBackgroundColor(tgui::Color(210, 210, 210)); // Цвет фона меню
+    m_menuBar->getRenderer()->setTextColor(tgui::Color::Black);
+    m_menuBar->getRenderer()->setSelectedBackgroundColor(tgui::Color(0, 110, 220));
+    m_menuBar->getRenderer()->setSelectedTextColor(tgui::Color::White);
+    m_menuBar->setHeight(28); // Высота панели меню
+
+    // --- Меню "Файл" ---
+    m_menuBar->addMenu(L"Файл");
+    m_menuBar->addMenuItem(L"Файл", L"Сохранить параметры как...");
+    m_menuBar->addMenuItem(L"Файл", L"Сохранить данные траектории как...");
+    // Можно добавить разделитель, если есть другие пункты
+    // m_menuBar->addMenuItem(L"Файл", L""); 
+    // m_menuBar->addMenuItem(L"Файл", L"Выход"); // Если Выход тоже будет здесь
+
+    // Подключаем сигналы для пунктов меню "Файл"
+    m_menuBar->onMenuItemClick.connect([this](const std::vector<tgui::String>& menuItem) {
+        if (menuItem.size() == 2 && menuItem[0] == L"Файл") {
+            if (menuItem[1] == L"Сохранить параметры как...") {
+                onSaveParamsAsMenuItemClicked();
+            }
+            else if (menuItem[1] == L"Сохранить данные траектории как...") {
+                onSaveTrajectoryDataAsMenuItemClicked();
+            }
+            // else if (menuItem[1] == L"Выход") {
+            //     m_window.close();
+            // }
+        }
+        });
+
+    // TODO: Добавить меню "Справка" позже
+
+    m_gui.add(m_menuBar); // Добавляем MenuBar напрямую в Gui
+}
+
 // --- Загрузка виджетов ---
 void UserInterface::loadWidgets() {
+    loadMenuBar();
     loadLeftPanelWidgets();
     loadRightPanelWidgets();
     if (m_errorMessagesLabel) m_errorMessagesLabel->setText("");
@@ -259,31 +300,60 @@ void UserInterface::loadTableWidgets(tgui::Panel::Ptr parentPanel) {
 
 // --- Компоновка ---
 void UserInterface::setupLayout() {
+    float menuBarHeight = 0; // Объявляем и инициализируем
+    if (m_menuBar) {
+        menuBarHeight = m_menuBar->getSize().y;
+        if (menuBarHeight < 1.0f) { // Если getSize().y вернул 0 (например, компоновка еще не прошла)
+            menuBarHeight = 28; // Используем высоту по умолчанию, которую мы задали для MenuBar
+            std::cout << "DEBUG: MenuBar height from getSize() was 0, using default: " << menuBarHeight << std::endl;
+        }
+    }
+    
     // Левая панель
-    m_leftPanel->setSize({ "30%", "100%" }); // Немного шире для комфорта
-    m_leftPanel->setPosition({ 0, 0 });
+    if (m_leftPanel) {
+        m_leftPanel->setSize({ "30%", "100% - " + tgui::String::fromNumber(menuBarHeight) });
+        m_leftPanel->setPosition({ 0, menuBarHeight }); // Смещаем вниз на высоту меню
+    }
 
     // Правая панель
-    m_rightPanel->setSize({ "70%", "100%" });
-    m_rightPanel->setPosition({ "30%", 0 });
+    if (m_rightPanel) {
+        m_rightPanel->setSize({ "70%", "100% - " + tgui::String::fromNumber(menuBarHeight) });
+        m_rightPanel->setPosition({ "30%", menuBarHeight }); // Смещаем вниз на высоту меню
+    }
 
     // Контейнеры внутри правой панели
     const float rightPanelPadding = PANEL_PADDING;
     const float verticalSpacing = WIDGET_SPACING / 2.f;
 
-    m_trajectoryContainerPanel->setSize(
-        { tgui::bindWidth(m_rightPanel) - 2 * rightPanelPadding,
-         "60% - " + tgui::String::fromNumber(rightPanelPadding + verticalSpacing / 2.f) 
-        }
-    );
-    m_trajectoryContainerPanel->setPosition({ rightPanelPadding, rightPanelPadding });
+    //m_trajectoryContainerPanel->setSize(
+    //    { tgui::bindWidth(m_rightPanel) - 2 * rightPanelPadding,
+    //     "60% - " + tgui::String::fromNumber(rightPanelPadding + verticalSpacing / 2.f) 
+    //    }
+    //);
+    //m_trajectoryContainerPanel->setPosition({ rightPanelPadding, rightPanelPadding });
 
-    m_tableContainerPanel->setSize(
-        { tgui::bindWidth(m_rightPanel) - 2 * rightPanelPadding,
-         "40% - " + tgui::String::fromNumber(rightPanelPadding + verticalSpacing / 2.f) 
-        }
-    );
-    m_tableContainerPanel->setPosition({ rightPanelPadding, tgui::bindBottom(m_trajectoryContainerPanel) + verticalSpacing });
+    //m_tableContainerPanel->setSize(
+    //    { tgui::bindWidth(m_rightPanel) - 2 * rightPanelPadding,
+    //     "40% - " + tgui::String::fromNumber(rightPanelPadding + verticalSpacing / 2.f) 
+    //    }
+    //);
+    //m_tableContainerPanel->setPosition({ rightPanelPadding, tgui::bindBottom(m_trajectoryContainerPanel) + verticalSpacing });
+
+    if (m_trajectoryContainerPanel && m_rightPanel) { // Добавляем проверки
+        m_trajectoryContainerPanel->setSize(
+            { tgui::bindWidth(m_rightPanel) - 2 * rightPanelPadding,
+             "60% - " + tgui::String::fromNumber(rightPanelPadding + verticalSpacing / 2.f) }
+        );
+        m_trajectoryContainerPanel->setPosition({ rightPanelPadding, rightPanelPadding });
+    }
+
+    if (m_tableContainerPanel && m_rightPanel && m_trajectoryContainerPanel) { // Добавляем проверки
+        m_tableContainerPanel->setSize(
+            { tgui::bindWidth(m_rightPanel) - 2 * rightPanelPadding,
+             "40% - " + tgui::String::fromNumber(rightPanelPadding + verticalSpacing / 2.f) }
+        );
+        m_tableContainerPanel->setPosition({ rightPanelPadding, tgui::bindBottom(m_trajectoryContainerPanel) + verticalSpacing });
+    }
 }
 
 // --- Подключение сигналов ---
@@ -447,9 +517,11 @@ void UserInterface::onCalculateButtonPressed() {
 
     if (paramsForCalc.DT > 1e-9) {
         paramsForCalc.STEPS = static_cast<int>(T_total_dimensionless / paramsForCalc.DT);
+        m_lastCalculationDT = paramsForCalc.DT; // <--- СОХРАНЯЕМ DT
     }
     else {
         paramsForCalc.STEPS = 1000;
+        m_lastCalculationDT = paramsForCalc.DT;
         std::cerr << "Warning: DT is too small or zero. Using default STEPS." << std::endl;
     }
     if (paramsForCalc.STEPS <= 0) paramsForCalc.STEPS = 1;
@@ -507,6 +579,158 @@ void UserInterface::onCalculateButtonPressed() {
         else m_errorMessagesLabel->setText(L"Расчет завершен, но траектория не построена (возможно, столкновение в начале).");
     }
 }
+
+void UserInterface::onSaveParamsAsMenuItemClicked() {
+    std::cout << "Menu: Save Params As clicked" << std::endl;
+    if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"");
+
+    auto dialog = tgui::FileDialog::create(L"Сохранить параметры как...", L"Сохранить");
+    dialog->setFileTypeFilters({ {L"Текстовые файлы (*.txt)", {L"*.txt"}}, {L"Все файлы (*.*)", {L"*.*"}} });
+    dialog->setConfirmButtonText(L"Сохранить");
+    dialog->setCancelButtonText(L"Отмена");
+    dialog->setFilename(L"simulation_params.txt");
+
+    dialog->onFileSelect.connect([this](const std::vector<tgui::Filesystem::Path>& paths) { // Сигнал передает вектор
+        if (paths.empty()) {
+            std::cout << "Save Params As: No file selected or dialog cancelled." << std::endl;
+            if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"Сохранение параметров отменено.");
+            return;
+        }
+
+        const tgui::Filesystem::Path& fsPath = paths[0];
+
+        // Получаем tgui::String для отображения (использует '/')
+        tgui::String pathForDisplay = fsPath.asString();
+
+        // Получаем нативную строку для файлового потока
+        // (std::wstring на Windows, std::string на других)
+        auto nativePathForStream = fsPath.asNativeString();
+
+        // Открываем файл, используя нативную строку
+        // std::ofstream может принимать const wchar_t* (из std::wstring) на Windows
+        // или const char* (из std::string)
+        std::ofstream outFile(nativePathForStream);
+            if (!outFile.is_open()) {
+                std::cerr << "Error: Could not open file '" << pathForDisplay.toStdString() /* для лога */ << "' for saving parameters." << std::endl;
+                if (m_errorMessagesLabel) {
+                    m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                    m_errorMessagesLabel->setText(L"Ошибка: Не удалось сохранить параметры в\n'" + pathForDisplay + L"'.");
+                }
+                return;
+            }
+
+        std::string m_str = m_edit_m ? m_edit_m->getText().toStdString() : "0";
+        std::string M_str = m_edit_M ? m_edit_M->getText().toStdString() : "0";
+        std::string V0_str = m_edit_V0 ? m_edit_V0->getText().toStdString() : "0";
+        std::string T_str = m_edit_T ? m_edit_T->getText().toStdString() : "0";
+        std::string k_str = m_edit_k ? m_edit_k->getText().toStdString() : "0";
+        std::string F_str = m_edit_F ? m_edit_F->getText().toStdString() : "0";
+
+        outFile << "m_satellite_kg=" << m_str << std::endl;
+        outFile << "M_central_body_factor=" << M_str << std::endl;
+        outFile << "V0_m_per_s=" << V0_str << std::endl;
+        outFile << "T_days=" << T_str << std::endl;
+        outFile << "k_coeff=" << k_str << std::endl;
+        outFile << "F_coeff=" << F_str << std::endl;
+        outFile.close();
+
+        if (outFile.fail()) {
+            std::cerr << "Error: Failed to write or close parameter file '" << pathForDisplay.toStdString() << "'." << std::endl;
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                m_errorMessagesLabel->setText(L"Ошибка записи в файл\n'" + pathForDisplay + L"'.");
+            }
+        }
+        else {
+            std::cout << "Parameters saved to '" << pathForDisplay.toStdString() << "'" << std::endl;
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color(0, 128, 0));
+                m_errorMessagesLabel->setText(L"Параметры сохранены в\n'" + pathForDisplay + L"'.");
+            }
+        }
+        });
+
+    dialog->onClose.connect([dialog] {
+        if (dialog && dialog->getParent()) {
+            dialog->getParent()->remove(dialog);
+        }
+        });
+    m_gui.add(dialog);
+}
+
+void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
+    std::cout << "Menu: Save Trajectory Data As clicked" << std::endl;
+    if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"");
+
+    if (!m_trajectoryAvailable || m_calculatedStates.empty()) {
+        // ... (обработка ошибки, как была) ...
+        return;
+    }
+
+    auto dialog = tgui::FileDialog::create(L"Сохранить данные траектории как...", L"Сохранить");
+    // ... (настройка фильтров, кнопок, имени файла по умолчанию) ...
+    dialog->setFileTypeFilters({ {L"Текстовые файлы (*.txt)", {L"*.txt"}}, {L"CSV файлы (*.csv)", {L"*.csv"}}, {L"Все файлы (*.*)", {L"*.*"}} });
+    dialog->setConfirmButtonText(L"Сохранить");
+    dialog->setCancelButtonText(L"Отмена");
+    dialog->setFilename(L"trajectory_data.txt");
+
+    dialog->onFileSelect.connect([this](const std::vector<tgui::Filesystem::Path>& paths) {
+        if (paths.empty()) {
+            // ... (обработка отмены) ...
+            return;
+        }
+
+        const tgui::Filesystem::Path& fsPath = paths[0];
+        tgui::String pathForDisplay = fsPath.asString();
+        auto nativePathForStream = fsPath.asNativeString();
+
+        std::ofstream outFile(nativePathForStream);
+        if (!outFile.is_open()) {
+            std::cerr << "Error: Could not open file '" << pathForDisplay.toStdString() << "' for saving trajectory data." << std::endl;
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                m_errorMessagesLabel->setText(L"Ошибка: Не удалось сохранить данные в\n'" + pathForDisplay + L"'.");
+            }
+            return;
+        }
+
+        outFile << std::fixed << std::setprecision(10);
+        outFile << "Step_Index,Time_dimless(approx),x_dimless,y_dimless,vx_dimless,vy_dimless\n";
+
+        for (size_t i = 0; i < m_calculatedStates.size(); ++i) {
+            const auto& state = m_calculatedStates[i];
+            double dimensionless_time_approx = static_cast<double>(i) * m_lastCalculationDT;
+
+            outFile << i << ","
+                << dimensionless_time_approx << ","
+                << state.x << "," << state.y << ","
+                << state.vx << "," << state.vy << "\n";
+        }
+        outFile.close();
+
+        if (outFile.fail()) {
+            // ... (обработка ошибки записи) ...
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                m_errorMessagesLabel->setText(L"Ошибка записи данных траектории в\n'" + pathForDisplay + L"'.");
+            }
+        }
+        else {
+            // ... (сообщение об успехе) ...
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color(0, 128, 0));
+                m_errorMessagesLabel->setText(L"Данные траектории (" + tgui::String::fromNumber(m_calculatedStates.size())
+                    + L" точек)\nсохранены в '" + pathForDisplay + L"'.");
+            }
+        }
+        });
+
+    dialog->onClose.connect([dialog] {
+        if (dialog && dialog->getParent()) dialog->getParent()->remove(dialog);
+        });
+    m_gui.add(dialog);
+}
+
 
 void UserInterface::prepareTrajectoryForDisplay() {
     m_trajectoryDisplayPoints.clear();
