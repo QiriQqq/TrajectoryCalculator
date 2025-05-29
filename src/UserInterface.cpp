@@ -2,6 +2,17 @@
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #endif
 
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#include <shellapi.h> // Для ShellExecute
+#include <filesystem> // Для C++17 std::filesystem (опционально, для построения пути)
+#endif
+
+#if defined(_MSC_VER)
+#pragma execution_character_set("utf-8")
+#endif
+
 #include "../include/TrajectoryVisualizer.h"
 #include "../include/UserInterface.h"
 
@@ -13,10 +24,6 @@
 #include <string>       // Для std::string, std::stod, substr, find
 #include <locale>       // Для std::locale, std::codecvt
 #include <codecvt>      // Для std::wstring_convert
-
-#if defined(_MSC_VER)
-#pragma execution_character_set("utf-8")
-#endif
 
 // --- Вспомогательная функция для создания строки ввода ---
 static std::pair<tgui::Label::Ptr, tgui::EditBox::Ptr> createInputRowControls(const sf::String& labelText, float editBoxWidth, float rowHeight) {
@@ -72,22 +79,26 @@ void UserInterface::loadMenuBar() {
     m_menuBar->addMenu(L"Файл");
     m_menuBar->addMenuItem(L"Файл", L"Сохранить параметры как...");
     m_menuBar->addMenuItem(L"Файл", L"Сохранить данные траектории как...");
+    m_menuBar->addMenuItem(L"Файл", L"Открыть папку с данными"); // <--- НОВЫЙ ПУНКТ МЕНЮ
     // Можно добавить разделитель, если есть другие пункты
     // m_menuBar->addMenuItem(L"Файл", L""); 
-    // m_menuBar->addMenuItem(L"Файл", L"Выход"); // Если Выход тоже будет здесь
+    m_menuBar->addMenuItem(L"Файл", L"Выход"); // Если Выход тоже будет здесь
 
     // Подключаем сигналы для пунктов меню "Файл"
     m_menuBar->onMenuItemClick.connect([this](const std::vector<tgui::String>& menuItem) {
         if (menuItem.size() == 2 && menuItem[0] == L"Файл") {
             if (menuItem[1] == L"Сохранить параметры как...") {
                 onSaveParamsAsMenuItemClicked();
-            }
+            } 
             else if (menuItem[1] == L"Сохранить данные траектории как...") {
                 onSaveTrajectoryDataAsMenuItemClicked();
+            } 
+            else if (menuItem[1] == L"Открыть папку с данными") { // <--- ОБРАБОТЧИК НОВОГО ПУНКТА
+                onOpenDataFolderMenuItemClicked();
             }
-            // else if (menuItem[1] == L"Выход") {
-            //     m_window.close();
-            // }
+            else if (menuItem[1] == L"Выход") {
+                m_window.close();
+            }
         }
     });
 
@@ -721,6 +732,74 @@ void UserInterface::onSaveTrajectoryDataAsMenuItemClicked() {
     m_gui.add(dialog);
 }
 
+#ifdef _WIN32
+std::wstring getExecutablePath_Windows() {
+    wchar_t path[MAX_PATH] = { 0 };
+    GetModuleFileNameW(NULL, path, MAX_PATH);
+    return std::wstring(path);
+}
+#endif
+
+void UserInterface::onOpenDataFolderMenuItemClicked() {
+    std::cout << "Menu: Open Data Folder clicked" << std::endl;
+    if (m_errorMessagesLabel) m_errorMessagesLabel->setText(L"");
+
+#ifdef _WIN32
+    std::wstring dataFolderPathNative;
+    try {
+        // Получаем путь к директории, где находится исполняемый файл
+        std::filesystem::path exePath = getExecutablePath_Windows();
+        std::filesystem::path dataPath = exePath.parent_path() / "data";
+
+        // Убедимся, что папка существует, или попытаемся ее создать
+        if (!std::filesystem::exists(dataPath)) {
+            if (!std::filesystem::create_directory(dataPath)) {
+                std::cerr << "Error: Could not create data directory: " << dataPath.string() << std::endl;
+                if (m_errorMessagesLabel) {
+                    m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                    m_errorMessagesLabel->setText(L"Ошибка: Не удалось создать папку 'data'.");
+                }
+                return;
+            }
+        }
+        dataFolderPathNative = dataPath.wstring(); // Получаем std::wstring
+
+        std::wcout << L"Attempting to open folder: " << dataFolderPathNative << std::endl;
+
+        HINSTANCE result = ShellExecuteW(m_window.getSystemHandle(), L"explore", dataFolderPathNative.c_str(), NULL, NULL, SW_SHOWNORMAL);
+
+        // ShellExecuteW возвращает значение > 32 в случае успеха
+        if ((intptr_t)result <= 32) {
+            DWORD errorCode = GetLastError(); // Можно использовать для более детальной диагностики
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+                m_errorMessagesLabel->setText(L"Ошибка: Не удалось открыть папку с данными.\nКод: " + tgui::String::fromNumber((intptr_t)result));
+            }
+        }
+        else {
+            if (m_errorMessagesLabel) {
+                m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color(0, 128, 0));
+                m_errorMessagesLabel->setText(L"Папка с данными открыта.");
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Exception while trying to open data folder: " << e.what() << std::endl;
+        if (m_errorMessagesLabel) {
+            m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+            m_errorMessagesLabel->setText(L"Исключение при открытии папки.");
+        }
+    }
+#else
+    std::cerr << "Open Data Folder: Not implemented for this OS." << std::endl;
+    if (m_errorMessagesLabel) {
+        m_errorMessagesLabel->getRenderer()->setTextColor(tgui::Color::Red);
+        m_errorMessagesLabel->setText(L"Функция 'Открыть папку' не реализована для данной ОС.");
+    }
+#endif
+}
+
+
 void UserInterface::prepareTrajectoryForDisplay() {
     m_trajectoryDisplayPoints.clear();
     if (!m_trajectoryAvailable || m_calculatedStates.empty()) {
@@ -1191,8 +1270,8 @@ void UserInterface::render() {
             }
         }
 
-        canvasRT.clear(sf::Color(250, 250, 250)); // Фон канваса
-        drawTrajectoryOnCanvas(canvasRT);      // Этот метод теперь сам устанавливает и сбрасывает View
+        canvasRT.clear(sf::Color(250, 250, 250));   // Фон канваса
+        drawTrajectoryOnCanvas(canvasRT);           // Этот метод теперь сам устанавливает и сбрасывает View
         m_trajectoryCanvas->display();
     }
     m_window.clear(sf::Color(220, 220, 220));

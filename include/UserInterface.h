@@ -59,6 +59,7 @@ private:
     // Методы-обработчики для новых пунктов меню
     void onSaveParamsAsMenuItemClicked();
     void onSaveTrajectoryDataAsMenuItemClicked();
+    void onOpenDataFolderMenuItemClicked(); // <--- НОВЫЙ МЕТОД
     void loadMenuBar();
 
     void loadWidgets();
