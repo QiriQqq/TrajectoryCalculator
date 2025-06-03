@@ -154,12 +154,12 @@ void UserInterface::loadLeftPanelWidgets() {
     m_inputControlsGrid = tgui::Grid::create();
     if (!m_inputControlsGrid) { std::cerr << "Error: Failed to create m_inputControlsGrid" << std::endl; return; }
     // Задаем ширину грида. Высота будет установлена после заполнения.
-    m_inputControlsGrid->setSize({ "60% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 0 });
+    m_inputControlsGrid->setSize({ "100% - " + tgui::String::fromNumber(2 * PANEL_PADDING), 0 });
     m_inputControlsGrid->setPosition({ PANEL_PADDING, tgui::bindBottom(m_inputTitleLabel) + WIDGET_SPACING });
 
     unsigned int currentRow = 0;
-    const float fixedLabelWidth = 120.f;
-    const float gapBetweenWidgets = WIDGET_SPACING / 2.f;
+    const float fixedLabelWidth = 100.f;
+    const float gapBetweenWidgets = WIDGET_SPACING / 5.f;
 
     auto addInputRowToGrid =
         [&](const sf::String& sfLabelText, tgui::EditBox::Ptr& editBoxMember, const sf::String& sfToolTipText) {
@@ -186,7 +186,7 @@ void UserInterface::loadLeftPanelWidgets() {
 
         auto editBox = tgui::EditBox::create();
         if (!editBox) { /* ошибка */ return; }
-        editBox->setSize({ "100%", INPUT_ROW_HEIGHT });
+        editBox->setSize({ "50%", INPUT_ROW_HEIGHT });
 
         editBoxMember = editBox;
 
@@ -1341,9 +1341,9 @@ InputParameters UserInterface::validateAndParseParameters(
 
     try {
         params.M_central_body_factor = std::stod(M_str);
-        if (params.M_central_body_factor < 1 || params.M_central_body_factor > 1.0e5) {
+        if (params.M_central_body_factor < 0.1 || params.M_central_body_factor > 1.0e5) {
             params.isValid = false;
-            errorMessages << L"Масса центр. тела (M) вне диапазона [1, 100.000].\n";
+            errorMessages << L"Масса центр. тела (M) вне диапазона [0,1, 100.000].\n";
         }
     }
     catch (const std::exception&) {
@@ -1353,9 +1353,9 @@ InputParameters UserInterface::validateAndParseParameters(
 
     try {
         params.V0_m_per_s = std::stod(V0_str);
-        if (params.V0_m_per_s < 0.0 || params.V0_m_per_s > 1.0e5) { // 100 км/с
+        if (params.V0_m_per_s < 0.0 || params.V0_m_per_s > 1000) { 
             params.isValid = false;
-            errorMessages << L"Начальная скорость (V0) вне диапазона [0, 100.000] м/с.\n";
+            errorMessages << L"Начальная скорость (V0) вне диапазона [0, 1000] м/с.\n";
         }
     }
     catch (const std::exception&) {
@@ -1365,9 +1365,9 @@ InputParameters UserInterface::validateAndParseParameters(
 
     try {
         params.T_days = std::stod(T_str);
-        if (params.T_days < 0.01 || params.T_days > 1.0e6) {
+        if (params.T_days < 1 || params.T_days > 1.0e7) {
             params.isValid = false;
-            errorMessages << L"Время симуляции (T) вне диапазона [0.01, 1.000.000] сут.\n";
+            errorMessages << L"Время симуляции (T) вне диапазона [1, 10.000.000] сут.\n";
         }
     }
     catch (const std::exception&) {
@@ -1377,9 +1377,9 @@ InputParameters UserInterface::validateAndParseParameters(
 
     try {
         params.k_coeff = std::stod(k_str);
-        if (params.k_coeff < -1.0 || params.k_coeff > 1.0) {
+        if (params.k_coeff < 0.0 || params.k_coeff > 2.0) {
             params.isValid = false;
-            errorMessages << L"Коэффициент k вне диапазона [-1.0, 1.0].\n";
+            errorMessages << L"Коэффициент k вне диапазона [0.0, 2.0].\n";
         }
     }
     catch (const std::exception&) {
@@ -1389,9 +1389,9 @@ InputParameters UserInterface::validateAndParseParameters(
 
     try {
         params.F_coeff = std::stod(F_str);
-        if (params.F_coeff < -1.0 || params.F_coeff > 1.0) {
+        if (params.F_coeff < 0.0 || params.F_coeff > 2.0) {
             params.isValid = false;
-            errorMessages << L"Коэффициент F вне диапазона [-1.0, 1.0].\n";
+            errorMessages << L"Коэффициент F вне диапазона [0.0, 2.0].\n";
         }
     }
     catch (const std::exception&) {
